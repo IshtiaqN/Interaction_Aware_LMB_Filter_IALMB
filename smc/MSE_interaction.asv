@@ -1,0 +1,36 @@
+function [MSE,truth_idx]=MSE_interaction(pairs,est,truth)
+
+pairs_idx = cell(truth.K,1);
+dist_truth = zeros(1,truth.K);
+err = cell(truth.K,1);
+MSE = cell(truth.K,1);
+
+int_est=cell(truth.K,1);
+dist_err=cell(truth.K,1);
+truth_idx=cell(truth.K,1);
+for k=1:truth.K
+    if(~isempty(pairs{k}))
+        %         int_est=zeros(2,size(pairs{k},2));
+        %         dist_err=zeros(1,size(pairs{k},2));
+        %         truth_idx=zeros(1,size(pairs{k},2));
+        for p=1:size(pairs{k},2)
+            p_l=find(and(any(est.L{k}==pairs{k}(1,p),1),any(est.L{k}==pairs{k}(2,p),1)));
+            pairs_idx{k} = [pairs_idx{k}; p_l];
+            int_est{k}(:,p) = [est.X{k}(1,p_l); est.X{k}(3,p_l)];   %est x and y for all labels with interaction in current frame
+            
+            %truth for interacting vehicle estimate
+            dist_truth = sqrt((truth.X{k}(1,:)-int_est{k}(1,p)).^2 + (truth.X{k}(2,:)-int_est{k}(2,p)).^2);
+            [dist_err{k}(p),truth_idx{k}(p)] = min(dist_truth);
+            
+        end
+        err=dist_err;
+        MSE{k}=sum(err{k}.^2)/length(err{k});
+    end
+    
+    
+end
+
+end
+
+
+

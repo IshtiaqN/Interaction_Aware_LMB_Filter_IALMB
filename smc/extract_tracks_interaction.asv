@@ -1,0 +1,96 @@
+clc;
+close all;
+
+figure('Position', [10 10 1920 1080]);
+hh=figure(1);
+whiteImage = 255 * ones(1080, 1920, 3, 'uint8');
+imshow(whiteImage); axis on; hold on;
+set(hh,'Units', 'Normalized', 'OuterPosition', [0 0 1 1])
+set(gca,'xtick',[0:200:Image_Width],'ytick',[0:200:Image_Height]);
+
+pairs_idx = cell(truth.K,1);
+int_est=cell(truth.K,1);
+dist_err=cell(truth.K,1);
+truth_idx=cell(truth.K,1);
+truth_int=cell(truth.K,1);
+truth_int_labels=cell(truth.K,1);
+
+int_vehicles=[];
+int_vehicles_list=[];
+
+
+
+for k=1:truth.K
+    if(~isempty(pairs{k}))
+        
+        int_vehicles=[int_vehicles , pairs{k}];
+        %         for p=1:size(pairs{k},2)
+        %             p_l=find(and(any(est.L{k}==pairs{k}(1,p),1),any(est.L{k}==pairs{k}(2,p),1)));
+        %             pairs_idx{k} = [pairs_idx{k}; p_l];
+        %             int_est{k}(:,p) = [est.X{k}(1,p_l); est.X{k}(3,p_l)];   %est x and y for all labels with interaction in current frame
+        %
+        %             %truth for interacting vehicle estimate
+        %             dist_truth = sqrt((truth.X{k}(1,:)-int_est{k}(1,p)).^2 + (truth.X{k}(1,:)-int_est{k}(1,p)).^2);
+        %             [dist_err{k}(p),truth_idx{k}(p)] = min(dist_truth);
+        %
+        %
+        %         end
+        %         truth_int{k}=truth.X{k}(:,truth_idx{k});
+        %         truth_int_labels{k}=truth.track_list{k}(truth_idx{k});
+        
+        
+    end
+end
+
+int_vehicles_list=unique(int_vehicles','rows')';
+fol_vehicles=int_vehicles_list([1,2],:);
+fol_vehicles=unique(fol_vehicles','rows')';
+truth_ID=zeros(1,size(fol_vehicles,2));
+est_data=cell(size(fol_vehicles,2),1);
+truth_data=cell(size(fol_vehicles,2),1);
+
+for p=1:size(fol_vehicles,2)
+    %     figure ('Position', [10 10 1920 1080]);
+    %     hh=figure(p);
+    %     whiteImage = 255 * ones(1080, 1920, 3, 'uint8');
+    %     imshow(whiteImage); axis on; hold on;
+    %     set(hh,'Units', 'Normalized', 'OuterPosition', [0 0 1 1])
+    %     set(gca,'xtick',[0:200:Image_Width],'ytick',[0:200:Image_Height]);
+    T_birth=fol_vehicles(1,p);
+    est_bidx=find(and(any(est.L{T_birth}==fol_vehicles(1,p),1),any(est.L{T_birth}==fol_vehicles(2,p),1)));
+    estLMB_bidx=find(and(any(est_lmb.L{T_birth}==fol_vehicles(1,p),1),any(est_lmb.L{T_birth}==fol_vehicles(2,p),1)));
+    dist_truth=sqrt( (truth.X{T_birth}(1,:) - est.X{T_birth}(1,est_bidx)).^2 + (truth.X{T_birth}(2,:) - est.X{T_birth}(3,est_bidx)).^2 );
+    [~,truth_idx{T_birth}(p)] = min(dist_truth);
+    truth_ID(p)=truth.track_list{T_birth}(truth_idx{T_birth}(p));
+%     est_data{p}=zeros(2,length(T_birth:truth.K));
+%     truth_data{p}=zeros(2,length(T_birth:truth.K));
+    
+    for Time=T_birth:truth.K
+        %find label data in estimates
+        est_idx=find(and(any(est.L{Time}==fol_vehicles(1,p),1),any(est.L{Time}==fol_vehicles(2,p),1)));
+        %         plot(est.X{Time}(1,est_idx),est.X{Time}(3,est_idx),'*r','MarkerSize',2);
+        truth_TID=find( truth_ID(p) == truth.track_list{Time});
+        %         plot(truth.X{Time}(1,truth_TID), truth.X{Time}(2,truth_TID),'ob','MarkerSize',2 );
+%         plot(est.X{Time}(1,est_idx),est.X{Time}(3,est_idx),'--r');
+%         plot(truth.X{Time}(1,truth_TID), truth.X{Time}(2,truth_TID),'--b' );
+if (~isempty(est.X{Time}(1,est_idx))) && (~isempty(est.X{Time}(1,est_idx))) 
+est_data{p}(:,Time)=[ est.X{Time}(1,est_idx);est.X{Time}(3,est_idx)];
+end
+
+if (~isempty(truth.X{Time}(1,truth_TID))) && (~isempty(truth.X{Time}(1,truth_TID)))
+truth_data{p}(:,Time)=[ truth.X{Time}(1,truth_TID); truth.X{Time}(2,truth_TID)];
+end   
+if (Time == T_birth)
+%             plot(est.X{Time}(1,est_idx),est.X{Time}(3,est_idx),'*r','MarkerSize',2);
+%             plot(truth.X{Time}(1,truth_TID), truth.X{Time}(2,truth_TID),'ob','MarkerSize',2 );
+            text(round(est.X{Time}(1,est_idx)),round(est.X{Time}(3,est_idx))-30,strcat(int2str(est.L{Time}(1,est_idx)),',',int2str(est.L{Time}(2,est_idx))),'Color','r','FontSize',8);
+            text(truth.X{Time}(1,truth_ID(p)),truth.X{Time}(2,truth_ID(p))+20,int2str(truth.track_list{Time}(1,truth_ID(p))),'FontSize',8);
+        end
+    end
+    est_data{p}(:,~any(est_data{p},1)) = [];
+    plot(est_data{p}(1,:),est_data{p}(2,:),'-*r','MarkerIndices',[1],'MarkerSize',3);
+    plot(truth_data{p}(1,:),truth_data{p}(2,:),'-sk','markerIndices',[1],'MarkerSize',3);
+    %     hold off;
+end
+
+hold off;
